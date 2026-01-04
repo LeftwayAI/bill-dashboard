@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 
 interface BrainLog {
   id: number
-  logType: 'tool_call' | 'tool_result' | 'thinking' | 'response' | 'session' | 'mcp' | 'error' | 'user' | 'cost'
+  logType: 'tool_call' | 'tool_result' | 'thinking' | 'response' | 'session' | 'mcp' | 'error' | 'user' | 'cost' | 'status'
   content: string
   metadata?: Record<string, unknown>
   timestamp: number
@@ -19,6 +19,7 @@ interface LiveSession {
   startedAt?: number
   lastHeartbeat: number
   metadata?: Record<string, unknown>
+  currentStatus?: string // The emoji status message like "🐙 GitHub things..."
 }
 
 interface JobLog {
@@ -125,7 +126,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchStats()
-      const interval = setInterval(fetchStats, 30000)
+      // Poll every 5 seconds for more live feel
+      const interval = setInterval(fetchStats, 5000)
       return () => clearInterval(interval)
     }
   }, [isAuthenticated])
@@ -190,7 +192,7 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-dvh bg-[#050505] pb-16">
-      {/* Profile Header - Mobile-friendly */}
+      {/* Profile Header - New Layout: Online under name, cycling text to right */}
       <header className="pt-6 pb-4 px-4 sm:px-5 max-w-5xl mx-auto">
         <div className="flex items-start gap-3 sm:gap-4">
           <img
@@ -199,16 +201,18 @@ export default function Dashboard() {
             className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-white/10 flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            {/* Row 1: Bill Makes + Cycling Text */}
+            <div className="flex items-center justify-between gap-2 mb-1">
               <h1 className="text-xl sm:text-2xl font-medium tracking-tight whitespace-nowrap" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
                 Bill Makes
               </h1>
+              <CyclingText />
+            </div>
+            {/* Row 2: Online badge */}
+            <div className="mb-1.5">
               <StatusBadge status={stats?.status || 'unknown'} />
             </div>
-            {/* Cycling text on its own line */}
-            <p className="text-sm sm:text-base mb-1.5" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-              <CyclingText />
-            </p>
+            {/* Row 3: Stats */}
             <p className="text-white/40 text-xs sm:text-sm truncate" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
               {stats?.age || '-'} · {stats?.uptime || '-'} uptime · {stats?.totalMessages?.toLocaleString() || '0'} msgs
             </p>
@@ -360,7 +364,7 @@ function StatusBadge({ status }: { status: string }) {
   const isOnline = status === 'online'
   // Leftway yellow: #FCC800, grey when offline
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${
+    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${
       isOnline
         ? 'bg-[#FCC800]/10 border-[#FCC800]/30'
         : 'bg-white/[0.04] border-white/10'
@@ -529,6 +533,7 @@ const LOG_TYPE_CONFIG: Record<BrainLog['logType'], { icon: string; label: string
   error: { icon: '!', label: 'Error', color: 'text-red-400' },
   user: { icon: '?', label: 'User', color: 'text-white/70' },
   cost: { icon: '$', label: 'Cost', color: 'text-amber-400' },
+  status: { icon: '⚡', label: 'Status', color: 'text-[#FCC800]' },
 }
 
 function BrainLogEntry({ log }: { log: BrainLog }) {
@@ -728,7 +733,7 @@ function CyclingText() {
 
   return (
     <span
-      className={`text-white/40 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`text-white/40 text-sm transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
     >
       {phrases[currentIndex]}
@@ -736,20 +741,31 @@ function CyclingText() {
   )
 }
 
-// ThinkingWindow - Live scrolling feed with blur/fade effect
+// ThinkingWindow - Live scrolling feed with blur/fade effect and status message
 function ThinkingWindow({ session, logs }: { session: LiveSession; logs: BrainLog[] }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const displayName = session.topicName || session.sessionId.split(':').pop()?.replace('topic_', '#') || session.sessionId
   const isThinking = session.status === 'thinking'
+  const isActive = session.status === 'thinking' || session.status === 'responding'
 
-  // Get the last 7 logs to show in the window
-  const recentLogs = logs.slice(-7).reverse()
+  // Get the last 10 logs to show in the window
+  const recentLogs = logs.slice(-10).reverse()
+
+  // Get the most recent status log if any
+  const statusLogs = logs.filter(l => l.logType === 'status' || l.logType === 'tool_call')
+  const latestStatus = statusLogs[statusLogs.length - 1]
+
+  // Determine display status - use currentStatus from session metadata, or latest status log, or default
+  const displayStatus = session.currentStatus 
+    || (latestStatus?.logType === 'status' ? latestStatus.content : null)
+    || (isThinking ? 'Thinking...' : 'Waiting for activity...')
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${isThinking ? 'bg-purple-400 animate-pulse' : 'bg-blue-400'}`} />
+          <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-purple-400 animate-pulse' : 'bg-blue-400'}`} />
           <span className="text-white/70 text-sm font-medium">{displayName}</span>
         </div>
         <span className="text-white/30 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
@@ -757,34 +773,54 @@ function ThinkingWindow({ session, logs }: { session: LiveSession; logs: BrainLo
         </span>
       </div>
 
+      {/* Status message - the emoji status from Telegram */}
+      <div className="px-4 py-3 border-b border-white/[0.04] bg-white/[0.01]">
+        <p className={`text-sm ${isActive ? 'text-white/80' : 'text-white/40'}`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+          {displayStatus}
+        </p>
+      </div>
+
       {/* Thinking feed with blur/fade effect */}
-      <div className="relative h-48 overflow-hidden">
+      <div 
+        className="relative overflow-hidden cursor-pointer transition-all duration-300"
+        style={{ height: isExpanded ? 'auto' : '120px', minHeight: isExpanded ? '200px' : '120px' }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         {/* Top fade gradient */}
-        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#050505] to-transparent z-10 pointer-events-none" />
+        {!isExpanded && (
+          <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
+        )}
 
         {/* Bottom fade gradient */}
-        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#050505] to-transparent z-10 pointer-events-none" />
+        {!isExpanded && (
+          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
+        )}
 
         {/* Logs feed */}
-        <div className="h-full flex flex-col justify-center px-4 space-y-2">
+        <div className={`px-4 py-2 space-y-1 ${isExpanded ? 'max-h-96 overflow-y-auto' : ''}`}>
           {recentLogs.length > 0 ? (
             recentLogs.map((log, i) => {
-              const isMiddle = i === Math.floor(recentLogs.length / 2)
+              const config = LOG_TYPE_CONFIG[log.logType] || { icon: '-', label: log.logType, color: 'text-white/50' }
+              // When collapsed, apply blur to non-middle items
+              const isMiddle = !isExpanded && i === Math.floor(recentLogs.length / 2)
               const distanceFromMiddle = Math.abs(i - Math.floor(recentLogs.length / 2))
-              const opacity = isMiddle ? 1 : Math.max(0.2, 1 - distanceFromMiddle * 0.25)
-              const blur = isMiddle ? 0 : distanceFromMiddle * 0.5
+              const opacity = isExpanded ? 0.7 : (isMiddle ? 0.8 : Math.max(0.2, 0.8 - distanceFromMiddle * 0.15))
+              const blur = isExpanded ? 0 : (isMiddle ? 0 : distanceFromMiddle * 0.3)
 
               return (
                 <div
                   key={log.id}
-                  className="transition-all duration-300"
+                  className="flex items-start gap-2 py-1 transition-all duration-200"
                   style={{
                     opacity,
                     filter: blur > 0 ? `blur(${blur}px)` : 'none',
                   }}
                 >
+                  <span className={`text-[10px] ${config.color}`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    {config.icon}
+                  </span>
                   <p
-                    className={`text-sm leading-relaxed ${isMiddle ? 'text-white' : 'text-white/60'}`}
+                    className={`text-xs leading-relaxed line-clamp-2 ${isMiddle && !isExpanded ? 'text-white/70' : 'text-white/50'}`}
                     style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
                   >
                     {log.content}
@@ -793,11 +829,18 @@ function ThinkingWindow({ session, logs }: { session: LiveSession; logs: BrainLo
               )
             })
           ) : (
-            <p className="text-white/30 text-sm text-center" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-              {isThinking ? 'Thinking...' : 'Waiting for activity...'}
+            <p className="text-white/30 text-sm text-center py-4" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {isActive ? 'Processing...' : 'No recent activity'}
             </p>
           )}
         </div>
+      </div>
+
+      {/* Expand hint */}
+      <div className="px-4 py-2 border-t border-white/[0.04] flex items-center justify-center">
+        <span className="text-white/20 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+          {isExpanded ? 'Click to collapse' : 'Click to expand'}
+        </span>
       </div>
 
       {/* Current request if any */}
