@@ -8,6 +8,17 @@ interface BrainLog {
   content: string
   metadata?: Record<string, unknown>
   timestamp: number
+  sessionId?: string
+}
+
+interface LiveSession {
+  sessionId: string
+  topicName?: string
+  status: 'idle' | 'thinking' | 'responding' | 'error'
+  currentRequest?: string
+  startedAt?: number
+  lastHeartbeat: number
+  metadata?: Record<string, unknown>
 }
 
 interface JobLog {
@@ -47,6 +58,7 @@ interface Stats {
   recentThinking?: RecentThought[]
   brainLogs?: BrainLog[]
   jobLogs?: JobLog[]
+  liveSessions?: LiveSession[]
   system?: {
     cpu: string
     memory: string
@@ -329,6 +341,27 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Live Sessions */}
+        {stats?.liveSessions && stats.liveSessions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <span>Live Sessions</span>
+              <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                {stats.liveSessions.filter(s => s.status === 'thinking' || s.status === 'responding').length} active
+              </span>
+            </CardHeader>
+            <div className="space-y-3">
+              {stats.liveSessions.map((session) => (
+                <LiveSessionCard
+                  key={session.sessionId}
+                  session={session}
+                  logs={stats.brainLogs?.filter(l => l.sessionId === session.sessionId) || []}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Job Logs */}
         {stats?.jobLogs && stats.jobLogs.length > 0 && (
           <Card>
@@ -589,12 +622,101 @@ function BrainLogEntry({ log }: { log: BrainLog }) {
         <p className="text-white/60 text-sm leading-relaxed break-words" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
           {log.content}
         </p>
-        {log.metadata && log.logType === 'tool_call' && log.metadata.input && (
+        {log.metadata && log.logType === 'tool_call' && 'input' in log.metadata && log.metadata.input ? (
           <p className="text-white/30 text-xs mt-1 truncate" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
             {String(log.metadata.input).slice(0, 80)}...
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   )
+}
+
+const SESSION_STATUS_CONFIG: Record<LiveSession['status'], { icon: string; label: string; color: string; bgColor: string }> = {
+  thinking: { icon: '🧠', label: 'Thinking', color: 'text-purple-400', bgColor: 'bg-purple-500/10 border-purple-500/20' },
+  responding: { icon: '💬', label: 'Responding', color: 'text-blue-400', bgColor: 'bg-blue-500/10 border-blue-500/20' },
+  idle: { icon: '💤', label: 'Idle', color: 'text-white/40', bgColor: 'bg-white/[0.02] border-white/[0.06]' },
+  error: { icon: '⚠️', label: 'Error', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20' },
+}
+
+function LiveSessionCard({ session, logs }: { session: LiveSession; logs: BrainLog[] }) {
+  const [isExpanded, setIsExpanded] = useState(session.status === 'thinking' || session.status === 'responding')
+  const config = SESSION_STATUS_CONFIG[session.status]
+
+  const timeSinceHeartbeat = Date.now() - session.lastHeartbeat
+  const isStale = timeSinceHeartbeat > 60000 // 1 minute
+
+  // Parse topic name from sessionId if not provided
+  const displayName = session.topicName || session.sessionId.split(':').pop()?.replace('topic_', '#') || session.sessionId
+
+  return (
+    <div className={`rounded-xl border ${config.bgColor} overflow-hidden transition-all duration-200`}>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-lg">{config.icon}</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/80 text-sm font-medium">{displayName}</span>
+              <span className={`text-[10px] uppercase tracking-wider ${config.color}`}>
+                {config.label}
+              </span>
+            </div>
+            {session.currentRequest && (
+              <p className="text-white/40 text-xs mt-0.5 truncate max-w-[300px]">
+                {session.currentRequest}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {session.startedAt && session.status === 'thinking' && (
+            <span className="text-white/30 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {formatDuration(Date.now() - session.startedAt)}
+            </span>
+          )}
+          <span className={`text-white/30 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-white/[0.06] p-4 pt-3">
+          {logs.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {logs.slice(0, 10).map((log) => (
+                <BrainLogEntry key={log.id} log={log} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-xs text-center py-2">
+              No activity logs for this session yet
+            </p>
+          )}
+          <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center justify-between">
+            <span className="text-white/20 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {session.sessionId}
+            </span>
+            {isStale && (
+              <span className="text-amber-400/60 text-[10px]">
+                Last heartbeat: {formatDuration(timeSinceHeartbeat)} ago
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ${minutes % 60}m`
 }
