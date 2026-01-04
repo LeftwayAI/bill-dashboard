@@ -7,6 +7,16 @@ interface RecentThought {
   timestamp: number
 }
 
+interface Milestone {
+  name: string
+  target: string
+  deadline: string
+  daysRemaining: number
+  current: number
+  progress: number
+  status: 'not_started' | 'in_progress' | 'completed'
+}
+
 interface Stats {
   status: 'online' | 'offline' | 'unknown'
   uptime: string
@@ -31,6 +41,7 @@ interface Stats {
     lastOrchestrate: string | null
     list: { name: string; interval: string }[]
   }
+  milestone?: Milestone
 }
 
 export default function Dashboard() {
@@ -164,6 +175,46 @@ export default function Dashboard() {
       </header>
 
       <div className="px-5 max-w-5xl mx-auto space-y-4">
+        {/* Milestone Banner */}
+        {stats?.milestone && (
+          <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Current Milestone</p>
+                  <h2 className="text-xl font-medium tracking-tight">{stats.milestone.name}</h2>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-light tracking-tight" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    {stats.milestone.daysRemaining}
+                  </p>
+                  <p className="text-white/30 text-xs">days left</p>
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-white/50" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    ${stats.milestone.current}
+                  </span>
+                  <span className="text-white/30" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    {stats.milestone.target}
+                  </span>
+                </div>
+                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500/60 to-emerald-400/40 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.max(2, stats.milestone.progress)}%` }}
+                  />
+                </div>
+              </div>
+              <p className="text-white/25 text-xs">
+                Target: {stats.milestone.deadline}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Hero Stats Row */}
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -325,7 +376,7 @@ function StatusPill({ status }: { status: string }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/[0.04] bg-white/[0.015] p-5">
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
       {children}
     </div>
   )
@@ -347,16 +398,16 @@ function StatCard({ label, value, mono, accent, suffix }: {
   suffix?: string
 }) {
   return (
-    <div className="rounded-2xl border border-white/[0.04] bg-white/[0.015] p-4">
-      <p className="text-white/30 text-xs mb-1.5">{label}</p>
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <p className="text-white/40 text-xs mb-1.5">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <p className={`text-xl sm:text-2xl font-light tracking-tight ${
-          accent ? 'text-emerald-400/70' : 'text-white/80'
+          accent ? 'text-emerald-400/80' : 'text-white/90'
         }`} style={mono ? { fontFamily: 'var(--font-geist-mono), monospace' } : { fontFamily: 'Satoshi, system-ui, sans-serif' }}>
           {value}
         </p>
         {suffix && (
-          <span className="text-white/20 text-xs">{suffix}</span>
+          <span className="text-white/30 text-xs">{suffix}</span>
         )}
       </div>
     </div>
@@ -369,19 +420,19 @@ function SystemMetric({ label, value }: { label: string; value: string }) {
   const isMedium = numValue > 50
 
   return (
-    <div className="rounded-2xl border border-white/[0.04] bg-white/[0.015] p-4">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-white/30 text-xs">{label}</span>
+        <span className="text-white/40 text-xs">{label}</span>
         <span className={`text-sm ${
-          isHigh ? 'text-red-400/70' : isMedium ? 'text-amber-400/70' : 'text-emerald-400/70'
+          isHigh ? 'text-red-400/80' : isMedium ? 'text-amber-400/80' : 'text-emerald-400/80'
         }`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
           {value}
         </span>
       </div>
-      <div className="h-1 bg-white/[0.04] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isHigh ? 'bg-red-400/50' : isMedium ? 'bg-amber-400/50' : 'bg-emerald-400/50'
+            isHigh ? 'bg-red-400/60' : isMedium ? 'bg-amber-400/60' : 'bg-emerald-400/60'
           }`}
           style={{ width: `${Math.min(numValue, 100)}%` }}
         />
