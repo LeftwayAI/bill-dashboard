@@ -101,7 +101,7 @@ export default function Dashboard() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-sm outline-none transition-all placeholder:text-white/20 focus:border-white/20 focus:bg-white/[0.04]"
+                className="w-full rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-base outline-none transition-all placeholder:text-white/20 focus:border-white/20 focus:bg-white/[0.04]"
                 placeholder="••••••••"
                 autoFocus
                 required
