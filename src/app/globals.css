@@ -2,7 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force dark background everywhere */
+:root,
+html,
 body {
-  background: #000;
-  color: #fff;
+  background-color: #050505 !important;
+  background: #050505 !important;
+  color-scheme: dark;
+}
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background: #050505;
+}
+
+html {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* Selection color - Bill's accent */
+::-moz-selection {
+  color: white;
+  background: #10b981;
+}
+
+::selection {
+  color: white;
+  background: #10b981;
+}
+
+/* Subtle pulse animation for online indicator */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Glow effect for accent elements */
+.glow-green {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
 }

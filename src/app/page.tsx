@@ -17,6 +17,13 @@ interface Stats {
     memory: string
     disk: string
   }
+  jobs?: {
+    enabled: boolean
+    running: boolean
+    lastUpgrade: string | null
+    lastOrchestrate: string | null
+    list: { name: string; interval: string }[]
+  }
 }
 
 export default function Dashboard() {
@@ -27,7 +34,6 @@ export default function Dashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
 
-  // Check if already authenticated
   useEffect(() => {
     const stored = sessionStorage.getItem('bm-auth')
     if (stored === 'true') {
@@ -79,30 +85,23 @@ export default function Dashboard() {
   // Login screen
   if (!isAuthenticated) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4">
+      <main className="flex min-h-dvh items-center justify-center px-4 bg-[#050505]">
         <div className="w-full max-w-sm">
-          <div className="mb-10 flex flex-col items-center">
-            <div className="mb-4 text-5xl">🤖</div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-medium tracking-tight">Bill Makes</h1>
-              <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-wider text-white/50">
-                Dashboard
-              </span>
-            </div>
+          <div className="mb-12 flex flex-col items-center">
+            <div className="mb-6 text-6xl">🤖</div>
+            <h1 className="text-3xl font-light tracking-tighter mb-2">Bill Makes</h1>
+            <p className="text-neutral-500 text-sm tracking-wide">Autonomous Agent Dashboard</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm text-white/50">
-                Password
-              </label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-base outline-none transition-all placeholder:text-white/20 focus:border-white/20 focus:bg-white/[0.04]"
-                placeholder="••••••••"
+                className="w-full rounded-full border border-white/[0.06] bg-white/[0.02] px-5 py-4 text-base outline-none transition-all placeholder:text-neutral-600 focus:border-white/20 focus:bg-white/[0.04]"
+                placeholder="Enter password"
                 autoFocus
                 required
               />
@@ -114,14 +113,14 @@ export default function Dashboard() {
 
             <button
               type="submit"
-              className="w-full rounded-full bg-white py-2.5 text-sm font-medium text-black transition-all hover:bg-white/90"
+              className="w-full rounded-full bg-white py-3.5 text-base font-medium text-black transition-all hover:bg-neutral-200 active:scale-[0.98]"
             >
               Enter
             </button>
           </form>
 
-          <p className="mt-8 text-center text-xs text-white/30">
-            Leftway Labs internal dashboard
+          <p className="mt-10 text-center text-xs text-neutral-600 tracking-wide">
+            Leftway Labs
           </p>
         </div>
       </main>
@@ -129,133 +128,218 @@ export default function Dashboard() {
   }
 
   // Dashboard
+  const isOnline = stats?.status === 'online'
+
   return (
-    <main className="p-8 max-w-4xl mx-auto">
-      <header className="mb-12">
-        <div className="flex items-center gap-4 mb-2">
-          <h1 className="text-4xl font-bold">Bill Makes</h1>
-          {stats?.status === 'online' && (
-            <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
-              Online
-            </span>
-          )}
+    <main className="min-h-dvh bg-[#050505] pb-12">
+      {/* Header */}
+      <header className="pt-12 pb-8 px-6 max-w-5xl mx-auto">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-4 mb-3">
+              <h1 className="text-4xl sm:text-5xl font-light tracking-tighter">Bill Makes</h1>
+              <StatusPill status={stats?.status || 'unknown'} />
+            </div>
+            <p className="text-neutral-500 text-lg font-light">Autonomous Agent Dashboard</p>
+          </div>
+          <div className="text-6xl">🤖</div>
         </div>
-        <p className="text-gray-400">Autonomous Agent Dashboard</p>
+
         {stats?.birthday && (
-          <p className="text-gray-500 text-sm mt-1">
-            Born {stats.birthday} • {stats.age} old
+          <p className="text-neutral-600 text-sm font-mono tracking-wide">
+            Born {stats.birthday} • <span className="text-emerald-500">{stats.age}</span> old
           </p>
         )}
       </header>
 
-      {/* Status Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <StatusCard
-          title="Status"
-          value={stats?.status || 'unknown'}
-          indicator={stats?.status === 'online' ? 'green' : 'red'}
-        />
-        <StatusCard
-          title="Uptime"
-          value={stats?.uptime || '-'}
-        />
-        <StatusCard
-          title="Last Activity"
-          value={stats?.lastActivity || '-'}
-        />
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <MetricCard
-          title="Total Messages"
-          value={stats?.totalMessages?.toLocaleString() || '-'}
-        />
-        <MetricCard
-          title="Sessions"
-          value={stats?.totalSessions?.toLocaleString() || '-'}
-        />
-        <MetricCard
-          title="Facts Learned"
-          value={stats?.totalFacts?.toLocaleString() || '-'}
-        />
-      </div>
-
-      {/* System Metrics */}
-      {stats?.system && (
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <MetricCard title="CPU" value={stats.system.cpu} />
-          <MetricCard title="Memory" value={stats.system.memory} />
-          <MetricCard title="Disk" value={stats.system.disk} />
+      <div className="px-6 max-w-5xl mx-auto space-y-6">
+        {/* Primary Stats */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Uptime"
+            value={stats?.uptime || '-'}
+            accent={isOnline}
+          />
+          <StatCard
+            label="Messages"
+            value={stats?.totalMessages?.toLocaleString() || '0'}
+            mono
+          />
+          <StatCard
+            label="Sessions"
+            value={stats?.totalSessions?.toLocaleString() || '0'}
+            mono
+          />
+          <StatCard
+            label="Last Active"
+            value={stats?.lastActivity ? formatTime(stats.lastActivity) : '-'}
+          />
         </div>
-      )}
 
-      {/* Top Senders */}
-      {stats?.topSenders && stats.topSenders.length > 0 && (
-        <div className="bg-gray-900 rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Top Senders</h2>
-          <div className="space-y-3">
-            {stats.topSenders.map((sender, i) => (
-              <div key={i} className="flex justify-between items-center">
-                <span className="text-gray-300">{sender.name}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 bg-gray-800 rounded-full h-2">
+        {/* System Metrics */}
+        {stats?.system && (
+          <div className="grid gap-4 grid-cols-3">
+            <SystemMetric label="CPU" value={stats.system.cpu} />
+            <SystemMetric label="Memory" value={stats.system.memory} />
+            <SystemMetric label="Disk" value={stats.system.disk} />
+          </div>
+        )}
+
+        {/* Jobs Section */}
+        {stats?.jobs && (
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-light tracking-tight">Scheduled Jobs</h2>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide ${
+                stats.jobs.enabled
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-neutral-800 text-neutral-500'
+              }`}>
+                {stats.jobs.enabled ? 'ENABLED' : 'DISABLED'}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {stats.jobs.list.map((job, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
+                  <span className="text-neutral-300">{job.name}</span>
+                  <span className="text-neutral-600 font-mono text-sm">{job.interval}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Senders */}
+        {stats?.topSenders && stats.topSenders.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+            <h2 className="text-lg font-light tracking-tight mb-5">Top Senders</h2>
+            <div className="space-y-4">
+              {stats.topSenders.map((sender, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <span className="text-neutral-400 w-28 truncate">{sender.name}</span>
+                  <div className="flex-1 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
                     <div
-                      className="bg-green-500 h-2 rounded-full"
+                      className="h-full bg-emerald-500/60 rounded-full transition-all duration-500"
                       style={{ width: `${(sender.count / stats.topSenders[0].count) * 100}%` }}
                     />
                   </div>
-                  <span className="text-gray-500 font-mono text-sm w-16 text-right">
+                  <span className="text-neutral-600 font-mono text-sm w-16 text-right">
                     {sender.count}
                   </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {fetchError && (
-        <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mt-8">
-          <p className="text-red-400">{fetchError}</p>
-        </div>
-      )}
-
-      {/* Footer */}
-      <footer className="mt-12 text-center text-gray-600 text-sm">
-        {lastFetch && (
-          <p>Last updated: {lastFetch.toLocaleTimeString()}</p>
         )}
-        <p className="mt-2">
-          <a href="https://leftway.ai" className="hover:text-gray-400">leftway.ai</a>
-          {' • '}
-          <a href="https://x.com/bill__makes" className="hover:text-gray-400">@bill__makes</a>
-        </p>
-      </footer>
+
+        {/* Error State */}
+        {fetchError && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5">
+            <p className="text-red-400 text-sm">{fetchError}</p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer className="pt-8 text-center">
+          {lastFetch && (
+            <p className="text-neutral-700 text-xs font-mono mb-3">
+              Updated {lastFetch.toLocaleTimeString()}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-4 text-neutral-600 text-sm">
+            <a href="https://leftway.ai" className="hover:text-neutral-400 transition-colors">
+              leftway.ai
+            </a>
+            <span className="text-neutral-800">•</span>
+            <a href="https://x.com/bill__makes" className="hover:text-neutral-400 transition-colors">
+              @bill__makes
+            </a>
+          </div>
+        </footer>
+      </div>
     </main>
   )
 }
 
-function StatusCard({ title, value, indicator }: { title: string; value: string; indicator?: 'green' | 'red' }) {
+function StatusPill({ status }: { status: string }) {
+  const isOnline = status === 'online'
   return (
-    <div className="bg-gray-900 rounded-lg p-6">
-      <p className="text-gray-400 text-sm mb-1">{title}</p>
-      <div className="flex items-center gap-2">
-        {indicator && (
-          <span className={`w-2 h-2 rounded-full ${indicator === 'green' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-        )}
-        <span className="text-2xl font-semibold capitalize">{value}</span>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+      isOnline ? 'bg-emerald-500/20' : 'bg-red-500/20'
+    }`}>
+      <span className={`w-2 h-2 rounded-full ${
+        isOnline ? 'bg-emerald-500 animate-pulse-subtle' : 'bg-red-500'
+      }`} />
+      <span className={`text-xs font-medium tracking-wide ${
+        isOnline ? 'text-emerald-400' : 'text-red-400'
+      }`}>
+        {isOnline ? 'ONLINE' : 'OFFLINE'}
+      </span>
+    </div>
+  )
+}
+
+function StatCard({ label, value, mono, accent }: {
+  label: string
+  value: string
+  mono?: boolean
+  accent?: boolean
+}) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 card-hover">
+      <p className="text-neutral-500 text-sm mb-2">{label}</p>
+      <p className={`text-2xl sm:text-3xl font-light tracking-tight ${
+        mono ? 'font-mono' : ''
+      } ${accent ? 'text-emerald-400' : 'text-white'}`}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function SystemMetric({ label, value }: { label: string; value: string }) {
+  const numValue = parseFloat(value) || 0
+  const isHigh = numValue > 80
+  const isMedium = numValue > 50
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-neutral-500 text-sm">{label}</span>
+        <span className={`font-mono text-lg ${
+          isHigh ? 'text-red-400' : isMedium ? 'text-amber-400' : 'text-emerald-400'
+        }`}>
+          {value}
+        </span>
+      </div>
+      <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            isHigh ? 'bg-red-500' : isMedium ? 'bg-amber-500' : 'bg-emerald-500'
+          }`}
+          style={{ width: `${Math.min(numValue, 100)}%` }}
+        />
       </div>
     </div>
   )
 }
 
-function MetricCard({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="bg-gray-900 rounded-lg p-6">
-      <p className="text-gray-400 text-sm mb-1">{title}</p>
-      <p className="text-3xl font-bold font-mono">{value}</p>
-    </div>
-  )
+function formatTime(dateStr: string): string {
+  try {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}d ago`
+  } catch {
+    return dateStr
+  }
 }
