@@ -185,37 +185,42 @@ export default function Dashboard() {
   const isOnline = stats?.status === 'online'
   const activeSessions = stats?.liveSessions?.filter(s => s.status === 'thinking' || s.status === 'responding') || []
 
+  // Get all sessions for the windows view
+  const allSessions = stats?.liveSessions || []
+
   return (
     <main className="min-h-dvh bg-[#050505] pb-16">
-      {/* Profile Header - Twitter-style */}
-      <header className="pt-8 pb-4 px-5 max-w-5xl mx-auto">
-        <div className="flex items-center gap-4">
+      {/* Profile Header - Mobile-friendly */}
+      <header className="pt-6 pb-4 px-4 sm:px-5 max-w-5xl mx-auto">
+        <div className="flex items-start gap-3 sm:gap-4">
           <img
             src="/bill-avatar.jpg"
             alt="Bill"
-            className="w-16 h-16 rounded-full object-cover border-2 border-white/10"
+            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-white/10 flex-shrink-0"
           />
-          <div className="flex-1">
-            <div className="flex items-center gap-2.5 mb-0.5">
-              <h1 className="text-2xl font-medium tracking-tight" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl sm:text-2xl font-medium tracking-tight whitespace-nowrap" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
                 Bill Makes
               </h1>
-              <CyclingText />
               <StatusBadge status={stats?.status || 'unknown'} />
             </div>
-            <p className="text-white/40 text-sm" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-              {stats?.age || '-'} old · {stats?.uptime || '-'} uptime · {stats?.totalMessages?.toLocaleString() || '0'} msgs
-              {stats?.system && ` · CPU ${stats.system.cpu} · Mem ${stats.system.memory}`}
+            {/* Cycling text on its own line */}
+            <p className="text-sm sm:text-base mb-1.5" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              <CyclingText />
+            </p>
+            <p className="text-white/40 text-xs sm:text-sm truncate" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {stats?.age || '-'} · {stats?.uptime || '-'} uptime · {stats?.totalMessages?.toLocaleString() || '0'} msgs
             </p>
           </div>
         </div>
       </header>
 
-      <div className="px-5 max-w-5xl mx-auto space-y-4">
-        {/* Live Thinking Windows - One per active session */}
-        {activeSessions.length > 0 && (
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {activeSessions.map((session) => (
+      <div className="px-4 sm:px-5 max-w-5xl mx-auto space-y-4">
+        {/* Live Thinking Windows - Show ALL sessions as windows */}
+        {allSessions.length > 0 && (
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
+            {allSessions.map((session) => (
               <ThinkingWindow
                 key={session.sessionId}
                 session={session}
@@ -225,18 +230,12 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Idle sessions - collapsed view */}
-        {stats?.liveSessions && stats.liveSessions.filter(s => s.status === 'idle').length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {stats.liveSessions.filter(s => s.status === 'idle').map((session) => (
-              <div
-                key={session.sessionId}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs"
-                style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
-              >
-                💤 {session.topicName || session.sessionId.split(':').pop()?.replace('topic_', '#')}
-              </div>
-            ))}
+        {/* Show placeholder when no sessions */}
+        {allSessions.length === 0 && (
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
+            <p className="text-white/30 text-sm" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              No active sessions yet. Message Bill to start one.
+            </p>
           </div>
         )}
 
