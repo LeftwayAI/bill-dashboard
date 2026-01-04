@@ -106,11 +106,15 @@ export default function Dashboard() {
       <main className="flex min-h-dvh items-center justify-center px-4 bg-[#050505]">
         <div className="w-full max-w-sm">
           <div className="mb-12 flex flex-col items-center">
-            <div className="mb-6 text-6xl">🤖</div>
+            <img
+              src="/bill-avatar.jpg"
+              alt="Bill"
+              className="mb-6 w-20 h-20 rounded-full object-cover border-2 border-white/10"
+            />
             <h1 className="text-3xl font-light tracking-tight mb-2" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
               Bill Makes
             </h1>
-            <p className="text-white/40 text-sm tracking-wide">Autonomous Agent Dashboard</p>
+            <p className="text-white/50 text-sm tracking-wide">Autonomous Agent Dashboard</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -160,16 +164,20 @@ export default function Dashboard() {
               <h1 className="text-3xl sm:text-4xl font-light tracking-tight" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
                 Bill Makes
               </h1>
-              <StatusPill status={stats?.status || 'unknown'} />
+              <StatusBadge status={stats?.status || 'unknown'} />
             </div>
-            <p className="text-white/30 text-sm font-light">Autonomous Agent Dashboard</p>
+            <p className="text-white/50 text-sm font-light">Autonomous Agent Dashboard</p>
           </div>
-          <div className="text-5xl opacity-80">🤖</div>
+          <img
+            src="/bill-avatar.jpg"
+            alt="Bill"
+            className="w-14 h-14 rounded-full object-cover border-2 border-white/10"
+          />
         </div>
 
         {stats?.birthday && (
-          <p className="text-white/20 text-xs tracking-wide" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-            Born {stats.birthday} · <span className="text-white/40">{stats.age}</span> old
+          <p className="text-white/30 text-xs tracking-wide" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            Born {stats.birthday} · <span className="text-white/50">{stats.age}</span> old
           </p>
         )}
       </header>
@@ -178,37 +186,37 @@ export default function Dashboard() {
         {/* Milestone Banner */}
         {stats?.milestone && (
           <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#FCC800]/5 rounded-full blur-3xl" />
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Current Milestone</p>
-                  <h2 className="text-xl font-medium tracking-tight">{stats.milestone.name}</h2>
+                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Current Milestone</p>
+                  <h2 className="text-xl font-medium tracking-tight text-white">{stats.milestone.name}</h2>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-light tracking-tight" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                  <p className="text-3xl font-light tracking-tight text-[#FCC800]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                     {stats.milestone.daysRemaining}
                   </p>
-                  <p className="text-white/30 text-xs">days left</p>
+                  <p className="text-white/50 text-xs">days left</p>
                 </div>
               </div>
               <div className="mb-3">
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-white/50" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                  <span className="text-white/70" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                     ${stats.milestone.current}
                   </span>
-                  <span className="text-white/30" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                  <span className="text-white/50" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                     {stats.milestone.target}
                   </span>
                 </div>
                 <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-500/60 to-emerald-400/40 rounded-full transition-all duration-1000"
+                    className="h-full bg-gradient-to-r from-[#FCC800]/80 to-[#FCC800]/50 rounded-full transition-all duration-1000"
                     style={{ width: `${Math.max(2, stats.milestone.progress)}%` }}
                   />
                 </div>
               </div>
-              <p className="text-white/25 text-xs">
+              <p className="text-white/40 text-xs">
                 Target: {stats.milestone.deadline}
               </p>
             </div>
@@ -242,7 +250,7 @@ export default function Dashboard() {
 
         {/* System Health */}
         {stats?.system && (
-          <div className="grid gap-3 grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
             <SystemMetric label="CPU" value={stats.system.cpu} />
             <SystemMetric label="Memory" value={stats.system.memory} />
             <SystemMetric label="Disk" value={stats.system.disk} />
@@ -267,8 +275,8 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {stats.jobs.list.map((job, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.03] last:border-0">
-                    <span className="text-white/50 text-sm">{job.name}</span>
-                    <span className="text-white/25 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    <span className="text-white/70 text-sm">{job.name}</span>
+                    <span className="text-white/40 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                       {job.interval}
                     </span>
                   </div>
@@ -286,14 +294,14 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {stats.topSenders.map((sender, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-white/40 text-sm w-24 truncate">{sender.name}</span>
-                    <div className="flex-1 h-1 bg-white/[0.04] rounded-full overflow-hidden">
+                    <span className="text-white/60 text-sm w-24 truncate">{sender.name}</span>
+                    <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-white/20 rounded-full transition-all duration-500"
+                        className="h-full bg-white/30 rounded-full transition-all duration-500"
                         style={{ width: `${(sender.count / stats.topSenders[0].count) * 100}%` }}
                       />
                     </div>
-                    <span className="text-white/25 text-xs w-12 text-right" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    <span className="text-white/40 text-xs w-12 text-right" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                       {sender.count}
                     </span>
                   </div>
@@ -315,10 +323,10 @@ export default function Dashboard() {
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {stats.recentThinking.map((thought, i) => (
                 <div key={i} className="pb-3 border-b border-white/[0.03] last:border-0">
-                  <p className="text-white/40 text-sm leading-relaxed mb-1.5">
+                  <p className="text-white/60 text-sm leading-relaxed mb-1.5">
                     {thought.content}
                   </p>
-                  <span className="text-white/15 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                  <span className="text-white/30 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                     {formatTimestamp(thought.timestamp)}
                   </span>
                 </div>
@@ -356,17 +364,20 @@ export default function Dashboard() {
   )
 }
 
-function StatusPill({ status }: { status: string }) {
+function StatusBadge({ status }: { status: string }) {
   const isOnline = status === 'online'
+  // Leftway yellow: #FCC800, grey when offline
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${
-      isOnline ? 'bg-emerald-500/10' : 'bg-red-500/10'
+    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${
+      isOnline
+        ? 'bg-[#FCC800]/10 border-[#FCC800]/30'
+        : 'bg-white/[0.04] border-white/10'
     }`}>
       <span className={`w-1.5 h-1.5 rounded-full ${
-        isOnline ? 'bg-emerald-400/80 animate-pulse' : 'bg-red-400/80'
+        isOnline ? 'bg-[#FCC800] animate-pulse' : 'bg-white/30'
       }`} />
-      <span className={`text-[10px] font-medium tracking-wider uppercase ${
-        isOnline ? 'text-emerald-400/70' : 'text-red-400/70'
+      <span className={`text-[10px] font-medium tracking-wide ${
+        isOnline ? 'text-[#FCC800]' : 'text-white/40'
       }`}>
         {isOnline ? 'Online' : 'Offline'}
       </span>
@@ -384,7 +395,7 @@ function Card({ children }: { children: React.ReactNode }) {
 
 function CardHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-4 text-white/50 text-sm font-light" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+    <div className="flex items-center justify-between mb-4 text-white/70 text-sm font-light" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
       {children}
     </div>
   )
@@ -399,15 +410,15 @@ function StatCard({ label, value, mono, accent, suffix }: {
 }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <p className="text-white/40 text-xs mb-1.5">{label}</p>
+      <p className="text-white/50 text-xs mb-1.5">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <p className={`text-xl sm:text-2xl font-light tracking-tight ${
-          accent ? 'text-emerald-400/80' : 'text-white/90'
+          accent ? 'text-emerald-400' : 'text-white'
         }`} style={mono ? { fontFamily: 'var(--font-geist-mono), monospace' } : { fontFamily: 'Satoshi, system-ui, sans-serif' }}>
           {value}
         </p>
         {suffix && (
-          <span className="text-white/30 text-xs">{suffix}</span>
+          <span className="text-white/40 text-xs">{suffix}</span>
         )}
       </div>
     </div>
@@ -422,9 +433,9 @@ function SystemMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-white/40 text-xs">{label}</span>
+        <span className="text-white/50 text-xs">{label}</span>
         <span className={`text-sm ${
-          isHigh ? 'text-red-400/80' : isMedium ? 'text-amber-400/80' : 'text-emerald-400/80'
+          isHigh ? 'text-red-400' : isMedium ? 'text-amber-400' : 'text-emerald-400'
         }`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
           {value}
         </span>
@@ -432,7 +443,7 @@ function SystemMetric({ label, value }: { label: string; value: string }) {
       <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isHigh ? 'bg-red-400/60' : isMedium ? 'bg-amber-400/60' : 'bg-emerald-400/60'
+            isHigh ? 'bg-red-400/70' : isMedium ? 'bg-amber-400/70' : 'bg-emerald-400/70'
           }`}
           style={{ width: `${Math.min(numValue, 100)}%` }}
         />
