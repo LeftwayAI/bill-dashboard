@@ -12,12 +12,48 @@ interface Stats {
   totalFacts: number
   lastActivity: string
   topSenders: { name: string; count: number }[]
+  system?: {
+    cpu: string
+    memory: string
+    disk: string
+  }
 }
 
 export default function Dashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<Date | null>(null)
+
+  // Check if already authenticated
+  useEffect(() => {
+    const stored = sessionStorage.getItem('bm-auth')
+    if (stored === 'true') {
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (res.ok) {
+        sessionStorage.setItem('bm-auth', 'true')
+        setIsAuthenticated(true)
+        setError('')
+      } else {
+        setError('Invalid password')
+      }
+    } catch {
+      setError('Something went wrong')
+    }
+  }
 
   const fetchStats = async () => {
     try {
@@ -26,18 +62,73 @@ export default function Dashboard() {
       const data = await res.json()
       setStats(data)
       setLastFetch(new Date())
-      setError(null)
-    } catch (e) {
-      setError('Could not connect to Bill')
+      setFetchError(null)
+    } catch {
+      setFetchError('Could not connect to Bill')
     }
   }
 
   useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    if (isAuthenticated) {
+      fetchStats()
+      const interval = setInterval(fetchStats, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated])
 
+  // Login screen
+  if (!isAuthenticated) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-10 flex flex-col items-center">
+            <div className="mb-4 text-5xl">🤖</div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-medium tracking-tight">Bill Makes</h1>
+              <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[10px] uppercase tracking-wider text-white/50">
+                Dashboard
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm text-white/50">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-full border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-sm outline-none transition-all placeholder:text-white/20 focus:border-white/20 focus:bg-white/[0.04]"
+                placeholder="••••••••"
+                autoFocus
+                required
+              />
+            </div>
+
+            {error && (
+              <p className="text-center text-sm text-red-400">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full rounded-full bg-white py-2.5 text-sm font-medium text-black transition-all hover:bg-white/90"
+            >
+              Enter
+            </button>
+          </form>
+
+          <p className="mt-8 text-center text-xs text-white/30">
+            Leftway Labs internal dashboard
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  // Dashboard
   return (
     <main className="p-8 max-w-4xl mx-auto">
       <header className="mb-12">
@@ -90,6 +181,15 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* System Metrics */}
+      {stats?.system && (
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <MetricCard title="CPU" value={stats.system.cpu} />
+          <MetricCard title="Memory" value={stats.system.memory} />
+          <MetricCard title="Disk" value={stats.system.disk} />
+        </div>
+      )}
+
       {/* Top Senders */}
       {stats?.topSenders && stats.topSenders.length > 0 && (
         <div className="bg-gray-900 rounded-lg p-6 mb-8">
@@ -116,9 +216,9 @@ export default function Dashboard() {
       )}
 
       {/* Error State */}
-      {error && (
+      {fetchError && (
         <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mt-8">
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-400">{fetchError}</p>
         </div>
       )}
 
