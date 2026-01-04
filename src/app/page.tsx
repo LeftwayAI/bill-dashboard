@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from 'react'
 
+interface BrainLog {
+  id: number
+  logType: 'tool_call' | 'tool_result' | 'thinking' | 'response' | 'session' | 'mcp' | 'error' | 'user' | 'cost'
+  content: string
+  metadata?: Record<string, unknown>
+  timestamp: number
+}
+
 interface RecentThought {
   content: string
   timestamp: number
@@ -29,6 +37,7 @@ interface Stats {
   lastActivity: string
   topSenders: { name: string; count: number }[]
   recentThinking?: RecentThought[]
+  brainLogs?: BrainLog[]
   system?: {
     cpu: string
     memory: string
@@ -311,25 +320,18 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent Thinking */}
-        {stats?.recentThinking && stats.recentThinking.length > 0 && (
+        {/* Brain Activity */}
+        {stats?.brainLogs && stats.brainLogs.length > 0 && (
           <Card>
             <CardHeader>
-              <span>Recent Thoughts</span>
+              <span>Brain Activity</span>
               <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                 Live feed
               </span>
             </CardHeader>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {stats.recentThinking.map((thought, i) => (
-                <div key={i} className="pb-3 border-b border-white/[0.03] last:border-0">
-                  <p className="text-white/60 text-sm leading-relaxed mb-1.5">
-                    {thought.content}
-                  </p>
-                  <span className="text-white/30 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                    {formatTimestamp(thought.timestamp)}
-                  </span>
-                </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {stats.brainLogs.map((log) => (
+                <BrainLogEntry key={log.id} log={log} />
               ))}
             </div>
           </Card>
@@ -483,4 +485,48 @@ function formatTimestamp(ts: number): string {
   } catch {
     return '-'
   }
+}
+
+const LOG_TYPE_CONFIG: Record<BrainLog['logType'], { icon: string; label: string; color: string }> = {
+  tool_call: { icon: '>', label: 'Tool', color: 'text-[#FCC800]' },
+  tool_result: { icon: '<', label: 'Result', color: 'text-emerald-400' },
+  thinking: { icon: '~', label: 'Thinking', color: 'text-purple-400' },
+  response: { icon: '#', label: 'Response', color: 'text-blue-400' },
+  session: { icon: '*', label: 'Session', color: 'text-white/50' },
+  mcp: { icon: '@', label: 'MCP', color: 'text-cyan-400' },
+  error: { icon: '!', label: 'Error', color: 'text-red-400' },
+  user: { icon: '?', label: 'User', color: 'text-white/70' },
+  cost: { icon: '$', label: 'Cost', color: 'text-amber-400' },
+}
+
+function BrainLogEntry({ log }: { log: BrainLog }) {
+  const config = LOG_TYPE_CONFIG[log.logType] || { icon: '-', label: log.logType, color: 'text-white/50' }
+
+  return (
+    <div className="flex gap-3 py-2 border-b border-white/[0.03] last:border-0">
+      <div className="flex-shrink-0 pt-0.5">
+        <span className={`text-xs font-mono ${config.color}`}>
+          {config.icon}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`text-xs font-medium ${config.color}`}>
+            {config.label}
+          </span>
+          <span className="text-white/20 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {formatTimestamp(log.timestamp)}
+          </span>
+        </div>
+        <p className="text-white/60 text-sm leading-relaxed break-words" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+          {log.content}
+        </p>
+        {log.metadata && log.logType === 'tool_call' && log.metadata.input && (
+          <p className="text-white/30 text-xs mt-1 truncate" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {String(log.metadata.input).slice(0, 80)}...
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
