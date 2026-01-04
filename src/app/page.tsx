@@ -10,6 +10,14 @@ interface BrainLog {
   timestamp: number
 }
 
+interface JobLog {
+  id: number
+  jobType: 'linear' | 'upgrade' | 'orchestrate' | 'wrap'
+  content: string
+  status: 'completed' | 'skipped' | 'error'
+  timestamp: number
+}
+
 interface RecentThought {
   content: string
   timestamp: number
@@ -38,6 +46,7 @@ interface Stats {
   topSenders: { name: string; count: number }[]
   recentThinking?: RecentThought[]
   brainLogs?: BrainLog[]
+  jobLogs?: JobLog[]
   system?: {
     cpu: string
     memory: string
@@ -320,6 +329,23 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Job Logs */}
+        {stats?.jobLogs && stats.jobLogs.length > 0 && (
+          <Card>
+            <CardHeader>
+              <span>Job History</span>
+              <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                Recent runs
+              </span>
+            </CardHeader>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {stats.jobLogs.map((log) => (
+                <JobLogEntry key={log.id} log={log} />
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Brain Activity */}
         {stats?.brainLogs && stats.brainLogs.length > 0 && (
           <Card>
@@ -485,6 +511,48 @@ function formatTimestamp(ts: number): string {
   } catch {
     return '-'
   }
+}
+
+const JOB_TYPE_CONFIG: Record<JobLog['jobType'], { icon: string; label: string; color: string }> = {
+  linear: { icon: '🔧', label: 'Linear', color: 'text-blue-400' },
+  upgrade: { icon: '🧠', label: 'Upgrade', color: 'text-purple-400' },
+  orchestrate: { icon: '🎯', label: 'Orchestrate', color: 'text-[#FCC800]' },
+  wrap: { icon: '🌙', label: 'Wrap', color: 'text-indigo-400' },
+}
+
+const STATUS_CONFIG: Record<JobLog['status'], { badge: string; color: string }> = {
+  completed: { badge: 'Done', color: 'bg-emerald-500/10 text-emerald-400' },
+  skipped: { badge: 'Skip', color: 'bg-white/[0.04] text-white/40' },
+  error: { badge: 'Error', color: 'bg-red-500/10 text-red-400' },
+}
+
+function JobLogEntry({ log }: { log: JobLog }) {
+  const jobConfig = JOB_TYPE_CONFIG[log.jobType] || { icon: '?', label: log.jobType, color: 'text-white/50' }
+  const statusConfig = STATUS_CONFIG[log.status] || { badge: log.status, color: 'bg-white/[0.04] text-white/40' }
+
+  return (
+    <div className="flex gap-3 py-3 border-b border-white/[0.03] last:border-0">
+      <div className="flex-shrink-0 pt-0.5 text-lg">
+        {jobConfig.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`text-sm font-medium ${jobConfig.color}`}>
+            {jobConfig.label}
+          </span>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusConfig.color}`}>
+            {statusConfig.badge}
+          </span>
+          <span className="text-white/20 text-[10px] ml-auto" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {formatTimestamp(log.timestamp)}
+          </span>
+        </div>
+        <p className="text-white/50 text-xs leading-relaxed break-words line-clamp-3" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+          {log.content}
+        </p>
+      </div>
+    </div>
+  )
 }
 
 const LOG_TYPE_CONFIG: Record<BrainLog['logType'], { icon: string; label: string; color: string }> = {
