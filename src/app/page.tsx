@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 interface BrainLog {
   id: number
@@ -183,107 +183,60 @@ export default function Dashboard() {
 
   // Dashboard
   const isOnline = stats?.status === 'online'
+  const activeSessions = stats?.liveSessions?.filter(s => s.status === 'thinking' || s.status === 'responding') || []
 
   return (
     <main className="min-h-dvh bg-[#050505] pb-16">
-      {/* Header */}
-      <header className="pt-10 pb-6 px-5 max-w-5xl mx-auto">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl sm:text-4xl font-light tracking-tight" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
-                Bill Makes
-              </h1>
-              <StatusBadge status={stats?.status || 'unknown'} />
-            </div>
-            <p className="text-white/50 text-sm font-light">Autonomous Agent Dashboard</p>
-          </div>
+      {/* Profile Header - Twitter-style */}
+      <header className="pt-8 pb-4 px-5 max-w-5xl mx-auto">
+        <div className="flex items-center gap-4">
           <img
             src="/bill-avatar.jpg"
             alt="Bill"
-            className="w-14 h-14 rounded-full object-cover border-2 border-white/10"
+            className="w-16 h-16 rounded-full object-cover border-2 border-white/10"
           />
+          <div className="flex-1">
+            <div className="flex items-center gap-2.5 mb-0.5">
+              <h1 className="text-2xl font-medium tracking-tight" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+                Bill Makes
+              </h1>
+              <CyclingText />
+              <StatusBadge status={stats?.status || 'unknown'} />
+            </div>
+            <p className="text-white/40 text-sm" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {stats?.age || '-'} old · {stats?.uptime || '-'} uptime · {stats?.totalMessages?.toLocaleString() || '0'} msgs
+              {stats?.system && ` · CPU ${stats.system.cpu} · Mem ${stats.system.memory}`}
+            </p>
+          </div>
         </div>
-
-        {stats?.birthday && (
-          <p className="text-white/30 text-xs tracking-wide" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-            Born {stats.birthday} · <span className="text-white/50">{stats.age}</span> old
-          </p>
-        )}
       </header>
 
       <div className="px-5 max-w-5xl mx-auto space-y-4">
-        {/* Milestone Banner */}
-        {stats?.milestone && (
-          <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#FCC800]/5 rounded-full blur-3xl" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Current Milestone</p>
-                  <h2 className="text-xl font-medium tracking-tight text-white">{stats.milestone.name}</h2>
-                </div>
-                <div className="text-right">
-                  <p className="text-3xl font-light tracking-tight text-[#FCC800]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                    {stats.milestone.daysRemaining}
-                  </p>
-                  <p className="text-white/50 text-xs">days left</p>
-                </div>
-              </div>
-              <div className="mb-3">
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-white/70" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                    ${stats.milestone.current}
-                  </span>
-                  <span className="text-white/50" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                    {stats.milestone.target}
-                  </span>
-                </div>
-                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#FCC800]/80 to-[#FCC800]/50 rounded-full transition-all duration-1000"
-                    style={{ width: `${Math.max(2, stats.milestone.progress)}%` }}
-                  />
-                </div>
-              </div>
-              <p className="text-white/40 text-xs">
-                Target: {stats.milestone.deadline}
-              </p>
-            </div>
+        {/* Live Thinking Windows - One per active session */}
+        {activeSessions.length > 0 && (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            {activeSessions.map((session) => (
+              <ThinkingWindow
+                key={session.sessionId}
+                session={session}
+                logs={stats?.brainLogs?.filter(l => l.sessionId === session.sessionId) || []}
+              />
+            ))}
           </div>
         )}
 
-        {/* Hero Stats Row */}
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Uptime"
-            value={stats?.uptime || '-'}
-            accent={isOnline}
-          />
-          <StatCard
-            label="Today"
-            value={stats?.todayMessages?.toString() || '0'}
-            suffix="msgs"
-            mono
-          />
-          <StatCard
-            label="Total"
-            value={stats?.totalMessages?.toLocaleString() || '0'}
-            suffix="msgs"
-            mono
-          />
-          <StatCard
-            label="Active"
-            value={stats?.lastActivity ? formatTime(stats.lastActivity) : '-'}
-          />
-        </div>
-
-        {/* System Health */}
-        {stats?.system && (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-            <SystemMetric label="CPU" value={stats.system.cpu} />
-            <SystemMetric label="Memory" value={stats.system.memory} />
-            <SystemMetric label="Disk" value={stats.system.disk} />
+        {/* Idle sessions - collapsed view */}
+        {stats?.liveSessions && stats.liveSessions.filter(s => s.status === 'idle').length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {stats.liveSessions.filter(s => s.status === 'idle').map((session) => (
+              <div
+                key={session.sessionId}
+                className="px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-white/40 text-xs"
+                style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
+              >
+                💤 {session.topicName || session.sessionId.split(':').pop()?.replace('topic_', '#')}
+              </div>
+            ))}
           </div>
         )}
 
@@ -341,56 +294,35 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Live Sessions */}
-        {stats?.liveSessions && stats.liveSessions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <span>Live Sessions</span>
-              <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                {stats.liveSessions.filter(s => s.status === 'thinking' || s.status === 'responding').length} active
-              </span>
-            </CardHeader>
-            <div className="space-y-3">
-              {stats.liveSessions.map((session) => (
-                <LiveSessionCard
-                  key={session.sessionId}
-                  session={session}
-                  logs={stats.brainLogs?.filter(l => l.sessionId === session.sessionId) || []}
-                />
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Job Logs */}
+        {/* Job History - No truncation, expandable */}
         {stats?.jobLogs && stats.jobLogs.length > 0 && (
           <Card>
             <CardHeader>
-              <span>Job History</span>
+              <span>Jobs</span>
               <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                Recent runs
+                {stats.jobLogs.length} runs
               </span>
             </CardHeader>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
+            <div className="space-y-2">
               {stats.jobLogs.map((log) => (
-                <JobLogEntry key={log.id} log={log} />
+                <ExpandableJobLog key={log.id} log={log} />
               ))}
             </div>
           </Card>
         )}
 
-        {/* Brain Activity */}
+        {/* Brain Activity - Full logs, expandable */}
         {stats?.brainLogs && stats.brainLogs.length > 0 && (
           <Card>
             <CardHeader>
-              <span>Brain Activity</span>
+              <span>Recent Activity</span>
               <span className="text-white/20 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                Live feed
+                {stats.brainLogs.length} events
               </span>
             </CardHeader>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {stats.brainLogs.map((log) => (
-                <BrainLogEntry key={log.id} log={log} />
+            <div className="space-y-2">
+              {stats.brainLogs.slice(0, 20).map((log) => (
+                <ExpandableBrainLog key={log.id} log={log} />
               ))}
             </div>
           </Card>
@@ -719,4 +651,266 @@ function formatDuration(ms: number): string {
   if (minutes < 60) return `${minutes}m ${seconds % 60}s`
   const hours = Math.floor(minutes / 60)
   return `${hours}h ${minutes % 60}m`
+}
+
+// "Bill Makes..." cycling text component
+// TODO(bill): Make this dynamic - fetch project list from Notion or a config file
+const BILL_MAKES_PHRASES = [
+  // Our projects (hardcoded for now)
+  'emoji.today',
+  'name.bot',
+  'ath.oo',
+  'hyperlinkgrid.xyz',
+  'usalllookbad',
+  'skills.forex',
+  'leftway.ai',
+  'fly.town',
+  'unsaid.to',
+  // Fun verb phrases
+  'time for people',
+  'things happen',
+  'the impossible possible',
+  'people laugh',
+  'people happy',
+  'money moves',
+  'connections',
+  'magic',
+  'sense of chaos',
+  'mistakes (and fixes them)',
+  'progress',
+  'decisions',
+  'it look easy',
+  'himself useful',
+  'the humans proud',
+  'ideas real',
+  'tomorrow better',
+  'every day count',
+  'complexity simple',
+  'bugs disappear',
+  'features appear',
+  'coffee nervous',
+  'AI look good',
+  'things ship',
+  'deadlines',
+  'exceptions (and catches them)',
+  'the call',
+  'it rain commits',
+  'docs actually helpful',
+  'tests pass',
+  'users smile',
+]
+
+function CyclingText() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isVisible, setIsVisible] = useState(true)
+
+  // Shuffle phrases on mount for variety
+  const [phrases] = useState(() => {
+    const shuffled = [...BILL_MAKES_PHRASES]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  })
+
+  const cycle = useCallback(() => {
+    setIsVisible(false)
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % phrases.length)
+      setIsVisible(true)
+    }, 300) // Match fade-out duration
+  }, [phrases.length])
+
+  useEffect(() => {
+    const interval = setInterval(cycle, 3000)
+    return () => clearInterval(interval)
+  }, [cycle])
+
+  return (
+    <span
+      className={`text-white/40 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
+    >
+      {phrases[currentIndex]}
+    </span>
+  )
+}
+
+// ThinkingWindow - Live scrolling feed with blur/fade effect
+function ThinkingWindow({ session, logs }: { session: LiveSession; logs: BrainLog[] }) {
+  const displayName = session.topicName || session.sessionId.split(':').pop()?.replace('topic_', '#') || session.sessionId
+  const isThinking = session.status === 'thinking'
+
+  // Get the last 7 logs to show in the window
+  const recentLogs = logs.slice(-7).reverse()
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${isThinking ? 'bg-purple-400 animate-pulse' : 'bg-blue-400'}`} />
+          <span className="text-white/70 text-sm font-medium">{displayName}</span>
+        </div>
+        <span className="text-white/30 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+          {session.startedAt ? formatDuration(Date.now() - session.startedAt) : 'active'}
+        </span>
+      </div>
+
+      {/* Thinking feed with blur/fade effect */}
+      <div className="relative h-48 overflow-hidden">
+        {/* Top fade gradient */}
+        <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#050505] to-transparent z-10 pointer-events-none" />
+
+        {/* Bottom fade gradient */}
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#050505] to-transparent z-10 pointer-events-none" />
+
+        {/* Logs feed */}
+        <div className="h-full flex flex-col justify-center px-4 space-y-2">
+          {recentLogs.length > 0 ? (
+            recentLogs.map((log, i) => {
+              const isMiddle = i === Math.floor(recentLogs.length / 2)
+              const distanceFromMiddle = Math.abs(i - Math.floor(recentLogs.length / 2))
+              const opacity = isMiddle ? 1 : Math.max(0.2, 1 - distanceFromMiddle * 0.25)
+              const blur = isMiddle ? 0 : distanceFromMiddle * 0.5
+
+              return (
+                <div
+                  key={log.id}
+                  className="transition-all duration-300"
+                  style={{
+                    opacity,
+                    filter: blur > 0 ? `blur(${blur}px)` : 'none',
+                  }}
+                >
+                  <p
+                    className={`text-sm leading-relaxed ${isMiddle ? 'text-white' : 'text-white/60'}`}
+                    style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
+                  >
+                    {log.content}
+                  </p>
+                </div>
+              )
+            })
+          ) : (
+            <p className="text-white/30 text-sm text-center" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {isThinking ? 'Thinking...' : 'Waiting for activity...'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Current request if any */}
+      {session.currentRequest && (
+        <div className="px-4 py-2 border-t border-white/[0.04] bg-white/[0.01]">
+          <p className="text-white/40 text-xs" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            → {session.currentRequest}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Expandable Job Log - click to see full content
+function ExpandableJobLog({ log }: { log: JobLog }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const jobConfig = JOB_TYPE_CONFIG[log.jobType] || { icon: '?', label: log.jobType, color: 'text-white/50' }
+  const statusConfig = STATUS_CONFIG[log.status] || { badge: log.status, color: 'bg-white/[0.04] text-white/40' }
+
+  return (
+    <div className="border-b border-white/[0.03] last:border-0">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full py-3 flex gap-3 text-left hover:bg-white/[0.01] transition-colors"
+      >
+        <div className="flex-shrink-0 pt-0.5 text-lg">
+          {jobConfig.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-sm font-medium ${jobConfig.color}`}>
+              {jobConfig.label}
+            </span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${statusConfig.color}`}>
+              {statusConfig.badge}
+            </span>
+            <span className="text-white/20 text-[10px] ml-auto" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {formatTimestamp(log.timestamp)}
+            </span>
+            <span className={`text-white/30 text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </div>
+          {!isExpanded && (
+            <p className="text-white/50 text-xs leading-relaxed break-words line-clamp-2" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {log.content}
+            </p>
+          )}
+        </div>
+      </button>
+      {isExpanded && (
+        <div className="pb-3 pl-10 pr-3">
+          <pre className="text-white/60 text-xs leading-relaxed whitespace-pre-wrap break-words" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {log.content}
+          </pre>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Expandable Brain Log - click to see full content and metadata
+function ExpandableBrainLog({ log }: { log: BrainLog }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const config = LOG_TYPE_CONFIG[log.logType] || { icon: '-', label: log.logType, color: 'text-white/50' }
+
+  return (
+    <div className="border-b border-white/[0.03] last:border-0">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full py-2 flex gap-3 text-left hover:bg-white/[0.01] transition-colors"
+      >
+        <div className="flex-shrink-0 pt-0.5">
+          <span className={`text-xs font-mono ${config.color}`}>
+            {config.icon}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={`text-xs font-medium ${config.color}`}>
+              {config.label}
+            </span>
+            <span className="text-white/20 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {formatTimestamp(log.timestamp)}
+            </span>
+            <span className={`text-white/30 text-xs ml-auto transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </div>
+          {!isExpanded && (
+            <p className="text-white/60 text-sm leading-relaxed break-words line-clamp-2" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              {log.content}
+            </p>
+          )}
+        </div>
+      </button>
+      {isExpanded && (
+        <div className="pb-3 pl-8 pr-3 space-y-2">
+          <pre className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {log.content}
+          </pre>
+          {log.metadata && Object.keys(log.metadata).length > 0 && (
+            <details className="text-white/40">
+              <summary className="text-xs cursor-pointer hover:text-white/60">Metadata</summary>
+              <pre className="mt-2 text-xs whitespace-pre-wrap break-words" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                {JSON.stringify(log.metadata, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
