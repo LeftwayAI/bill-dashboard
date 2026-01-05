@@ -345,7 +345,15 @@ export default function Dashboard() {
               Updated {lastFetch.toLocaleTimeString()}
             </p>
           )}
-          <div className="flex items-center justify-center gap-4 text-white/25 text-xs">
+          <div className="flex items-center justify-center gap-4 text-white/25 text-xs flex-wrap">
+            <a href="/changelog" className="hover:text-white/40 transition-colors">
+              Changelog
+            </a>
+            <span className="text-white/10">·</span>
+            <a href="/contributions" className="hover:text-white/40 transition-colors">
+              Contributions
+            </a>
+            <span className="text-white/10">·</span>
             <a href="https://leftway.ai" className="hover:text-white/40 transition-colors">
               leftway.ai
             </a>
