@@ -6,7 +6,7 @@ interface BrainLog {
   id: number
   logType: 'tool_call' | 'tool_result' | 'thinking' | 'response' | 'session' | 'mcp' | 'error' | 'user' | 'cost' | 'status'
   content: string
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown> & { turns?: number; costUsd?: number }
   timestamp: number
   sessionId?: string
 }
@@ -221,6 +221,14 @@ export default function Dashboard() {
       </header>
 
       <div className="px-4 sm:px-5 max-w-5xl mx-auto space-y-4">
+        {/* Brain Command Deck - The carnival-style activity monitor */}
+        {stats?.brainLogs && (
+          <BrainCommandDeck
+            logs={stats.brainLogs}
+            sessions={allSessions}
+          />
+        )}
+
         {/* Live Thinking Windows - Show ALL sessions as windows */}
         {allSessions.length > 0 && (
           <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
@@ -746,6 +754,177 @@ function CyclingText() {
     >
       {phrases[currentIndex]}
     </span>
+  )
+}
+
+// Brain Command Deck - Carnival-style meters showing brain activity
+// The arcade game meter that shows how hard Bill is thinking
+function BrainCommandDeck({ logs, sessions }: { logs: BrainLog[]; sessions: LiveSession[] }) {
+  // Calculate activity metrics from logs
+  const now = Date.now()
+  const recentLogs = logs.filter(l => now - l.timestamp < 60000) // Last minute
+  const veryRecentLogs = logs.filter(l => now - l.timestamp < 5000) // Last 5 seconds
+
+  // Count by type
+  const typeCounts = recentLogs.reduce((acc, log) => {
+    acc[log.logType] = (acc[log.logType] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  // Get cost data from recent cost logs
+  const costLogs = logs.filter(l => l.logType === 'cost' && l.metadata?.costUsd)
+  const recentCost = costLogs.slice(-5).reduce((sum, l) => sum + (l.metadata?.costUsd || 0), 0)
+  const totalTurns = costLogs.slice(-5).reduce((sum, l) => sum + (l.metadata?.turns || 0), 0)
+
+  // Is actively thinking right now?
+  const isActivelyThinking = sessions.some(s => s.status === 'thinking' || s.status === 'responding')
+  const activeSessionCount = sessions.filter(s => s.status === 'thinking' || s.status === 'responding').length
+
+  // Calculate "brain power" - a composite score
+  const brainPower = Math.min(100,
+    (typeCounts.tool_call || 0) * 8 +
+    (typeCounts.thinking || 0) * 10 +
+    (typeCounts.response || 0) * 5 +
+    (veryRecentLogs.length * 15) +
+    (isActivelyThinking ? 30 : 0)
+  )
+
+  // Activity bars configuration
+  const activityBars = [
+    { label: 'TOOL', value: Math.min(100, (typeCounts.tool_call || 0) * 15), color: '#FCC800' },
+    { label: 'THINK', value: Math.min(100, (typeCounts.thinking || 0) * 20), color: '#a855f7' },
+    { label: 'RESP', value: Math.min(100, (typeCounts.response || 0) * 15), color: '#3b82f6' },
+    { label: 'MCP', value: Math.min(100, (typeCounts.mcp || 0) * 20), color: '#06b6d4' },
+    { label: 'ERR', value: Math.min(100, (typeCounts.error || 0) * 50), color: '#ef4444' },
+    { label: 'COST', value: Math.min(100, recentCost * 5000), color: '#f59e0b' },
+    { label: 'SESS', value: Math.min(100, activeSessionCount * 33), color: '#10b981' },
+    { label: 'PWR', value: brainPower, color: '#FCC800' },
+  ]
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-b from-[#0a0a0a] to-[#050505] p-5 relative overflow-hidden scanlines">
+      {/* Header with arcade feel */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🎰</span>
+          <div>
+            <h3 className="text-white/80 text-sm font-medium" style={{ fontFamily: 'Satoshi, system-ui, sans-serif' }}>
+              Brain Command Deck
+            </h3>
+            <p className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+              NEURAL ACTIVITY MONITOR
+            </p>
+          </div>
+        </div>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isActivelyThinking ? 'bg-[#FCC800]/10 border border-[#FCC800]/30' : 'bg-white/[0.02] border border-white/[0.06]'}`}>
+          <span className={`w-2 h-2 rounded-full ${isActivelyThinking ? 'bg-[#FCC800] animate-pulse' : 'bg-white/30'}`} />
+          <span className={`text-xs font-medium ${isActivelyThinking ? 'text-[#FCC800]' : 'text-white/40'}`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {isActivelyThinking ? 'ACTIVE' : 'IDLE'}
+          </span>
+        </div>
+      </div>
+
+      {/* Main power meter - the carnival game */}
+      <div className="flex gap-6 mb-6">
+        {/* Big vertical meter */}
+        <div className="flex flex-col items-center">
+          <div className="relative w-16 h-48 bg-[#0a0a0a] border-2 border-white/10 rounded-lg overflow-hidden">
+            {/* Segment markers */}
+            {[...Array(10)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute left-0 right-0 h-px bg-white/10"
+                style={{ bottom: `${(i + 1) * 10}%` }}
+              />
+            ))}
+            {/* The meter fill */}
+            <div
+              className={`absolute bottom-0 left-1 right-1 rounded transition-all duration-500 ${isActivelyThinking ? 'animate-meter-pulse' : ''}`}
+              style={{
+                height: `${brainPower}%`,
+                background: brainPower > 80
+                  ? 'linear-gradient(to top, #FCC800, #ff6b35)'
+                  : brainPower > 50
+                    ? 'linear-gradient(to top, #FCC800, #a855f7)'
+                    : 'linear-gradient(to top, #10b981, #FCC800)',
+                boxShadow: isActivelyThinking ? '0 0 20px rgba(252, 200, 0, 0.5)' : 'none',
+              }}
+            />
+            {/* Peak marker */}
+            {brainPower > 80 && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 text-2xl animate-bounce">
+                🔥
+              </div>
+            )}
+          </div>
+          <span className="mt-2 text-2xl font-bold text-[#FCC800]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {brainPower}
+          </span>
+          <span className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            BRAIN PWR
+          </span>
+        </div>
+
+        {/* 8 activity bars - arcade style */}
+        <div className="flex-1 grid grid-cols-4 gap-3">
+          {activityBars.map((bar, i) => (
+            <div key={bar.label} className="flex flex-col items-center">
+              <div className="relative w-full h-20 bg-[#0a0a0a] border border-white/10 rounded overflow-hidden">
+                {/* Segment lines */}
+                {[...Array(5)].map((_, j) => (
+                  <div
+                    key={j}
+                    className="absolute left-0 right-0 h-px bg-white/5"
+                    style={{ bottom: `${(j + 1) * 20}%` }}
+                  />
+                ))}
+                {/* Bar fill */}
+                <div
+                  className={`absolute bottom-0 left-0.5 right-0.5 rounded-sm transition-all duration-300 ${bar.value > 70 && isActivelyThinking ? 'animate-meter-pulse' : ''}`}
+                  style={{
+                    height: `${bar.value}%`,
+                    backgroundColor: bar.color,
+                    opacity: bar.value > 0 ? 0.8 : 0.2,
+                    boxShadow: bar.value > 50 ? `0 0 10px ${bar.color}40` : 'none',
+                  }}
+                />
+              </div>
+              <span className="mt-1 text-[10px] text-white/40" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                {bar.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-3 text-center border-t border-white/[0.04] pt-4">
+        <div>
+          <span className="text-lg font-bold text-[#FCC800]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {recentLogs.length}
+          </span>
+          <p className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>EVENTS/MIN</p>
+        </div>
+        <div>
+          <span className="text-lg font-bold text-purple-400" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {totalTurns}
+          </span>
+          <p className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>TURNS</p>
+        </div>
+        <div>
+          <span className="text-lg font-bold text-amber-400" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            ${recentCost.toFixed(4)}
+          </span>
+          <p className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>RECENT $</p>
+        </div>
+        <div>
+          <span className="text-lg font-bold text-emerald-400" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+            {activeSessionCount}
+          </span>
+          <p className="text-white/30 text-[10px]" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>SESSIONS</p>
+        </div>
+      </div>
+    </div>
   )
 }
 

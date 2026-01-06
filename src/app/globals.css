@@ -60,6 +60,96 @@ body {
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
+/* Carnival meter animations - that arcade game energy */
+@keyframes meter-pulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+@keyframes meter-shoot {
+  0% {
+    transform: scaleY(0);
+    filter: brightness(2);
+  }
+  70% {
+    transform: scaleY(1.1);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes meter-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
+
+@keyframes carnival-flash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-meter-pulse {
+  animation: meter-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-meter-shoot {
+  animation: meter-shoot 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transform-origin: bottom;
+}
+
+.animate-meter-glow {
+  animation: meter-glow 1s ease-in-out infinite;
+}
+
+.animate-carnival-flash {
+  animation: carnival-flash 0.3s ease-in-out infinite;
+}
+
+/* LCD/Calculator style font for meters */
+.font-lcd {
+  font-family: 'DSEG7', 'Segment7', var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented meter bar styling */
+.meter-segment {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.meter-segment.active {
+  animation: meter-pulse 1s ease-in-out infinite;
+}
+
+/* Scanline effect for retro feel */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+}
+
 /* Card hover effect */
 .card-hover {
   transition: all 0.2s ease;
