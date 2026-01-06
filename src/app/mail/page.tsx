@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface OutboxFile {
   name: string
@@ -13,18 +13,26 @@ interface OutboxFile {
 export default function MailPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+  const [outboxFiles, setOutboxFiles] = useState<OutboxFile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Mock data for now - will be replaced with real API
-  const outboxFiles: OutboxFile[] = [
-    {
-      name: 'bill-architecture-mindmap.png',
-      url: '/api/outbox/bill-architecture-mindmap.png',
-      size: 2048000,
-      created: '2026-01-06T12:34:56Z',
-      description: 'Visual diagram of Bill\'s complete architecture'
+  useEffect(() => {
+    async function fetchOutbox() {
+      try {
+        const res = await fetch('/api/outbox')
+        const data = await res.json()
+        // Filter out .meta files
+        const files = (data.files || []).filter((f: OutboxFile) => !f.name.endsWith('.meta'))
+        setOutboxFiles(files)
+      } catch (err) {
+        console.error('Failed to fetch outbox:', err)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  ]
+    fetchOutbox()
+  }, [])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -70,6 +78,11 @@ export default function MailPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const isImageFile = (name: string) => {
+    const ext = name.toLowerCase().split('.').pop()
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')
   }
 
   return (
@@ -136,13 +149,17 @@ export default function MailPage() {
             </h2>
           </div>
           <div className="p-4">
-            {outboxFiles.length > 0 ? (
-              <div className="space-y-3">
+            {isLoading ? (
+              <div className="text-green-400/60 text-center py-8 animate-pulse">
+                <p>// Loading outbox...</p>
+              </div>
+            ) : outboxFiles.length > 0 ? (
+              <div className="space-y-4">
                 {outboxFiles.map((file, i) => (
-                  <div key={i} className="border border-green-400/20 bg-[#0a0a0a] p-3 rounded">
-                    <div className="flex items-center justify-between mb-2">
+                  <div key={i} className="border border-green-400/20 bg-[#0a0a0a] p-4 rounded">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-green-300">📄</span>
+                        <span className="text-green-300">{isImageFile(file.name) ? '🖼️' : '📄'}</span>
                         <div>
                           <p className="text-green-400 font-medium">{file.name}</p>
                           {file.description && (
@@ -150,19 +167,30 @@ export default function MailPage() {
                           )}
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 text-green-400/60 text-xs">
+                        <span>{formatFileSize(file.size)}</span>
+                        <span>{formatDate(file.created)}</span>
+                      </div>
+                    </div>
+                    {isImageFile(file.name) && (
+                      <div className="mt-3 border border-green-400/10 rounded overflow-hidden bg-black/50">
+                        <img
+                          src={file.url}
+                          alt={file.description || file.name}
+                          className="w-full h-auto max-h-[600px] object-contain"
+                        />
+                      </div>
+                    )}
+                    {!isImageFile(file.name) && (
                       <a
                         href={file.url}
                         download={file.name}
-                        className="px-3 py-1 bg-green-400/20 text-green-300 rounded hover:bg-green-400/30 
+                        className="inline-block mt-2 px-3 py-1 bg-green-400/20 text-green-300 rounded hover:bg-green-400/30
                                  transition-colors text-sm border border-green-400/30"
                       >
                         DOWNLOAD
                       </a>
-                    </div>
-                    <div className="flex items-center gap-4 text-green-400/60 text-xs">
-                      <span>{formatFileSize(file.size)}</span>
-                      <span>{formatDate(file.created)}</span>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
