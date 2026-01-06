@@ -110,12 +110,12 @@ export default function MailPage() {
               />
               {isUploading && (
                 <p className="text-yellow-400 text-sm mt-2 animate-pulse">
-                  > Uploading...
+                  {">"} Uploading...
                 </p>
               )}
               {uploadStatus && (
                 <p className={`text-sm mt-2 ${uploadStatus.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>
-                  > {uploadStatus}
+                  {">"} {uploadStatus}
                 </p>
               )}
             </div>
@@ -184,10 +184,10 @@ export default function MailPage() {
             </h2>
           </div>
           <div className="p-4 text-green-400/60 text-sm space-y-1">
-            <p>> [2026-01-06 12:34:56] Mailbox initialized</p>
-            <p>> [2026-01-06 12:34:56] Inbox monitoring active</p>
-            <p>> [2026-01-06 12:34:56] Outbox ready for file sharing</p>
-            <p>> [2026-01-06 12:34:56] Waiting for file operations...</p>
+            <p>{"> [2026-01-06 12:34:56] Mailbox initialized"}</p>
+            <p>{"> [2026-01-06 12:34:56] Inbox monitoring active"}</p>
+            <p>{"> [2026-01-06 12:34:56] Outbox ready for file sharing"}</p>
+            <p>{"> [2026-01-06 12:34:56] Waiting for file operations..."}</p>
           </div>
         </section>
       </div>
